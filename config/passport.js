@@ -411,8 +411,8 @@ passport.use(new SlackStrategy({
   clientID: process.env.SLACK_ID,
   clientSecret: process.env.SLACK_SECRET,
   callbackURL: '/auth/slack/callback',
-  scope: 'identity.basic identity.email',
-  //team: 'T2PVA8SFQ', //only use if limiting to a specific Slack team
+  scope: 'identify users:read',
+  team: 'T2PVA8SFQ', //only use if limiting to a specific Slack team
   passReqToCallback: true
 }, (req, accessToken, refreshToken, profile, done) => {
   if (req.user) {

@@ -192,7 +192,7 @@ app.get('/auth/linkedin', passport.authenticate('linkedin', { state: 'SOME STATE
 app.get('/auth/linkedin/callback', passport.authenticate('linkedin', { failureRedirect: '/login' }), (req, res) => {
   res.redirect(req.session.returnTo || '/');
 });
-app.get('/auth/slack', passport.authenticate('slack', { scope: 'identity.basic,identity.email' }));
+app.get('/auth/slack', passport.authenticate('slack', { scope: 'identify users:read' }));
 app.get('/auth/slack/callback', passport.authenticate('slack', { failureRedirect: '/login' }), (req, res) => {
   res.redirect(req.session.returnTo || '/');
 });
