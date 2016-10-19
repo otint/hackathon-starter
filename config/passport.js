@@ -11,6 +11,7 @@ const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const OpenIDStrategy = require('passport-openid').Strategy;
 const OAuthStrategy = require('passport-oauth').OAuthStrategy;
 const OAuth2Strategy = require('passport-oauth').OAuth2Strategy;
+const SlackStrategy = require('passport-slack').Strategy;
 
 const User = require('../models/User');
 
@@ -398,6 +399,68 @@ passport.use(new InstagramStrategy({
       user.profile.picture = profile._json.data.profile_picture;
       user.save((err) => {
         done(err, user);
+      });
+    });
+  }
+}));
+
+/**
+ * Sign in with Slack
+ */
+passport.use(new SlackStrategy({
+  clientID: process.env.SLACK_ID,
+  clientSecret: process.env.SLACK_SECRET,
+  callbackURL: '/auth/slack/callback',
+  scope: 'identity.basic identity.email',
+  //team: 'T2PVA8SFQ', //only use if limiting to a specific Slack team
+  passReqToCallback: true
+}, (req, accessToken, refreshToken, profile, done) => {
+  if (req.user) {
+    //console.dir(profile._json.info.user);
+    User.findOne({ slack: profile._json.info.user.id }, (err, existingUser) => {
+      if (err) { return done(err); }
+      if (existingUser) {
+        req.flash('errors', { msg: 'There is already a Slack account that belongs to you. Sign in with that account or delete it, then link it with your current account.' });
+        done(err);
+      } else {
+        User.findById(req.user.id, (err, user) => {
+          if (err) { return done(err); }
+          user.slack = profile._json.info.user.id;
+          user.tokens.push({ kind: 'slack', accessToken });
+          user.profile.name = user.profile.name || profile._json.info.user.real_name;
+          user.profile.picture = profile._json.info.user.profile.image_512;
+          user.save((err) => {
+            req.flash('info', { msg: 'Slack account has been linked.' });
+            done(err, user);
+          });
+        });
+      }
+    });
+  } else {
+    User.findOne({ slack: profile._json.info.user.id }, (err, existingUser) => {
+      if (err) { return done(err); }
+      if (existingUser) {
+        //req.flash('info', { msg: 'Existing Slack user successfully signed in' });
+        return done(null, existingUser);
+      }
+      User.findOne({ email: profile._json.info.user.profile.email }, (err, existingEmailUser) => {
+        //console.dir(profile._json.info.user);
+        if (err) { return done(err); }
+        if (existingEmailUser) {
+          req.flash('errors', { msg: 'There is already an account using this email address. Sign in to that account and link it with Slack manually from Account Settings.' });
+          done(err);
+        } else {
+          const user = new User();
+          user.email = profile._json.info.user.profile.email;
+          user.slack = profile._json.info.user.id;
+          user.tokens.push({ kind: 'slack', accessToken });
+          user.profile.name = profile._json.info.user.real_name;
+          user.profile.picture = profile._json.info.user.profile.image_512;
+          user.save((err) => {
+            //req.flash('info', { msg: 'Successfully logged in with Slack' });
+            done(err, user);
+          });
+        }
       });
     });
   }
